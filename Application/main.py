@@ -1,11 +1,11 @@
 import os
 from app import app, url, exampleFolder
 import urllib.request
-from flask import Flask, flash, request, redirect, url_for, render_template, send_from_directory
+from flask import Flask, flash, request, redirect, url_for, render_template, send_from_directory, send_file
 from werkzeug.utils import secure_filename
 import PIL.Image
-import PIL.ImageTk
-from tkinter import Tk, Label
+#import PIL.ImageTk
+#from tkinter import Tk, Label
 import requests
 import json
 
@@ -13,6 +13,11 @@ import json
 from PyPDF2 import PdfFileReader
 import base64
 import csv
+
+# Connection avec AWS
+import boto3
+import logging 
+from botocore.exceptions import ClientError
 
 # Fonction de sécurisation des images et gestion des extensions autorisées
 ALLOWED_EXTENSIONS = set(['txt','pdf','csv','png', 'jpg', 'jpeg', 'gif'])
@@ -23,80 +28,168 @@ def allowed_file(filename):
 # Liste des fichiers chargés (ligne de commande)
 @app.route('/list', methods=['GET'])
 def listFile():
-	liste = ''
-	files = os.listdir(app.config['UPLOAD_FOLDER']) 
-	for file in files:
-		liste = liste + '     '+ file
-	liste += ' \n '
-	return(liste)
+	listeFichiers= ''
+	session = boto3.Session(profile_name='csloginstudent')
+	s3 = session.client("s3")
+	liste = s3.list_objects(Bucket = "paulb-fil-rouge-bucket-sio")
+	try:
+		for a in liste.get('Contents'):
+			listeFichiers += a.get('Key') + '\n'
+	except:
+		return 'Une erreur est survenue \n'
+	return(listeFichiers)
+
+
+
+import mimetypes
+@app.route('/mimetype', methods=['POST'])
+def mimetypeFile():
+	file = request.files["file"]
+	return mimetypes.guess_type(file.filename) 
+
 
 
 # Route de sélection d'une image (ligne de commande)
-@app.route('/load/<picture>',methods=['GET'])
-def loadFile(picture):
-	extension = picture.split('.')[-1]
-	name = picture.split('.')[0]
-	if not os.path.exists(exampleFolder + picture):
-	    return "Ce fichier n'est pas présent dans le dossier Fichiers_Test \n "
-	elif os.path.exists(app.config['UPLOAD_FOLDER'] + picture):
-		return 'Fichier déjà chargé \n '
-	elif picture == '':
-		return 'Aucun fichier sélectionné \n '
-	elif extension == 'pdf':
-		document = PdfFileReader(open(os.path.join(exampleFolder, picture),'rb'))
-		pdftext = ""
-		for page in range(document.numPages):
-			pageObj = document.getPage(page)
-			pdftext += pageObj.extractText().replace('\n','')
-		fichierJson = json.dumps({'Nom':name,'Metadonnees':document.getDocumentInfo(),'Donnees':pdftext})
-		with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
-			json.dump(fichierJson,file)
-		return 'ok \n '
+@app.route('/load',methods=['POST'])
+def loadFile():
+	try:
+		if 'file' not in request.files:
+			return "Aucun fichier lié \n"
+		file = request.files["file"]
+		if file.filename == '':
+			return "Aucun fichier indiqué \n"
+		if file and allowed_file(file.filename):
+			extension = file.filename.split('.')[-1]
+			name = file.filename.split('.')[0]
+			liste = listFile()
+		#Vérifier si le fichier est déjà chargé dans S3
+		if name+".json" in liste:
+			return "Un fichier contient le même nom \n"
+	except:
+		return "Ce fichier ne semble pas être supporté par l'application \n"
+		
+	#Fichiers PDF
+	if extension == 'pdf':
+		try:
+			document = PdfFileReader(open(os.path.join(exampleFolder, file.filename),'rb'))
+			pdftext = ""
+			for page in range(document.numPages):
+				pageObj = document.getPage(page)
+				pdftext += pageObj.extractText().replace('\n','')
+			fichierJson = json.dumps({'Nom':name,'Metadonnees':document.getDocumentInfo(),'Donnees':pdftext})
+			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
+				json.dump(fichierJson,file)
+				#sendFile(name+'.json')
+		except: 
+			return 'Une erreur est survenue \n'
+		return 'Fichier correctement envoyé \n '
+
+	#Images
 	elif extension in {'png','jpg','jpeg','gif'}:
-		with open(os.path.join(exampleFolder, picture),'rb') as img_file:
-			imageB64 = base64.b64encode(img_file.read())
-		imageJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':imageB64.decode("utf-8")})
-		with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
+		try:
+			with open(os.path.join(exampleFolder, file.filename),'rb') as img_file:
+				imageB64 = base64.b64encode(img_file.read())
+			imageJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':imageB64.decode("utf-8")})
+			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(imageJson,file)
-		return "ok \n "
+				sendFile(name+'.json')
+		except: 
+			return 'Une erreur est survenue \n'
+		return "Fichier correctement envoyé \n "
+
+	# Fichiers CSV
 	elif extension == "csv":
 		liste = ""
-		with open(os.path.join(exampleFolder, picture),"r") as csvfile:
-			csvReader = csv.reader(csvfile, delimiter=';',quotechar='|')
-			for row in csvReader:
-				liste += ", "+ str(row)
-		CSVJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':liste})
-		with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
+		try:
+			with open(os.path.join(exampleFolder, file.filename),"r") as csvfile:
+				csvReader = csv.reader(csvfile, delimiter=';',quotechar='|')
+				for row in csvReader:
+					liste += ", "+ str(row)
+			CSVJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':liste})
+			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(CSVJson,file)
-		return "ok \n"
+				sendFile(name+'.json')
+		except: 
+			return 'Une erreur est survenue \n'
+		return "Fichier correctement envoyé \n"
+
+	# Fichiers txt
 	elif extension == "txt":
-		with open(os.path.join(exampleFolder, picture),"r") as txtfile:
-			texte = txtfile.read()
-			txtJson = json.dumps({'Nom':name, 'extension':extension, 'Donnees':texte})
-		with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
+		try:
+			with open(os.path.join(exampleFolder, file.filename),"r") as txtfile:
+				texte = txtfile.read()
+				txtJson = json.dumps({'Nom':name, 'extension':extension, 'Donnees':texte})
+			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(txtJson,file)
-		return "ok \n "
+				sendFile(name+'.json')
+		except:
+			return 'Une erreur est survenue \n'
+		return "Fichier correctement envoyé \n "
+	
+	# Extension non reconnue
 	else :
 		return "Ce format d'image n'est pas autorisé. Veuillez utiliser les formats suivants: png, jpg, jpeg, gif \n "
 
-@app.route('/read/<picture>',methods=['GET'])
-def readFile(picture):
+
+def sendFile(nomFichier):
+	bucket = "paulb-fil-rouge-bucket-sio"
+	object_name = nomFichier
+	file_name = app.config['UPLOAD_FOLDER'] + nomFichier
+	session = boto3.Session(profile_name='csloginstudent')
+	s3 = session.client("s3")
 	try:
-		jsonFile = open(app.config['UPLOAD_FOLDER']+picture)
-		data = json.load(jsonFile)
+		response = s3.upload_file(file_name, bucket, object_name)
+	except ClientError as e:
+		logging.error(e)
+		return 'False'
+	try:
+		os.remove(app.config['UPLOAD_FOLDER']+nomFichier)
 	except:
-		return "Le fichier n'existe pas \n"
-	else:
-		return data +'\n'
+		return "Le fichier n'a pas pu être supprimé"
+	return "Fichier correctement envoyé et supprimé de l'appli"
+
+
+
+
+
+
+
+@app.route('/download/<picture>', methods=['GET'])
+def downloadFile(picture):
+	bucket = "paulb-fil-rouge-bucket-sio"
+	object_name = picture
+	file_name = app.config['UPLOAD_FOLDER'] + picture
+	liste = listFile()
+	session = boto3.Session(profile_name='csloginstudent')
+	s3 = session.client("s3")
+	if picture not in liste:
+		return "Il n'y aucun fichier de ce nom \n"
+	try:
+		s3.download_file(bucket, object_name, file_name)
+		uploads = os.path.join(app.config['UPLOAD_FOLDER'], picture)
+		#send_from_directory(directory=uploads, filename = object_name, as_attachment=True)
+	except: 
+		return "Un problème est survenu \n"
+	return {send_file(uploads, as_attachment=True),"Fichier JSON correctement chargé dans le dossier actuel"}
+
+
+
+
+
+
+
 
 @app.route('/delete/<picture>',methods=['GET'])
 def deleteFile(picture):
+	bucket = "paulb-fil-rouge-bucket-sio"
+	session = boto3.Session(profile_name='csloginstudent')
+	s3 = session.client("s3")
 	try:
-		os.remove(app.config['UPLOAD_FOLDER']+picture)
-	except:
-		return "Le fichier n'existe pas \n "
-	else:
-		return "Fichier parfaitement supprimé \n"
+		s3.delete_object(Bucket = bucket, Key = picture)
+	except ClientError as e:
+		logging.error(e)
+		return "Il y a eu une erreur \n"
+	return 'Fichier parfaitement supprimé \n'
 
 
 # Lancement de l'application à l'execution du script
