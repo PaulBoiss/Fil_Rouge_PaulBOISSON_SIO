@@ -38,16 +38,32 @@ Installation de boto3 pour l'accès à s3 depuis un script Python
 &rarr; pip install boto3
 
 
-# Fonctionnalités
+$ pip install -U Celery
+
+# Lancement du serveur
+Se mettre dans le dossiser Application et taper la commande: $ python3 main.py
+
+
+# Obtenir la liste des fichiers contenus dans le bucket:
+curl http://127.0.0.1:5000/list
+
+# Uploader un fichier
 Uploader un fichier avec curl. Se mettre dans son dossier 
 curl -i -X POST -F "file=@FichierPNG.png"  http://127.0.0.1:5000/load
 
-curl http://127.0.0.1:5000/list
 
-curl -i -X POST -F "file=@FichierPNG.png"  http://127.0.0.1:5000/mimetypes
+# Supprimer un fichier 
+curl http://127.0.0.1:5000/delete/Filename
 
+curl -i -X POST -F "file=@FichierPNG.png"  http://127.0.0.1:5000/mimetype
 
 Depuis la console wsl, pour accéder aux fichiers de l'ordi: cd /mnt/c/Users/PC/Desktop/SIO/'ProjetFilRouge'/PaulBOISSON_Fil_Rouge
+
+
+# Télécharger un fichier JSON existant:
+
+curl -O http://127.0.0.1:5000/download/FichierPNG.json
+Attention, avec cette commande, même si le fichier n'existe pas dans le bucket S3 un fichier portant son nom sera téléchargé. 
 
 
 
@@ -56,46 +72,3 @@ export AWS_PROFILE=csloginteacher
 aws sts get-caller-identity
 export AWS_PROFILE=csloginstudent
 aws sts get-caller-identity
-
-if not os.path.exists(exampleFolder + picture):
-	    return "Ce fichier n'est pas présent dans le dossier Fichiers_Test \n "
-	elif os.path.exists(app.config['UPLOAD_FOLDER'] + picture):
-		return 'Fichier déjà chargé \n '
-	elif picture == '':
-		return 'Aucun fichier sélectionné \n '
-	elif extension == 'pdf':
-		document = PdfFileReader(open(os.path.join(exampleFolder, picture),'rb'))
-		pdftext = ""
-		for page in range(document.numPages):
-			pageObj = document.getPage(page)
-			pdftext += pageObj.extractText().replace('\n','')
-		fichierJson = json.dumps({'Nom':name,'Metadonnees':document.getDocumentInfo(),'Donnees':pdftext})
-		with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
-			json.dump(fichierJson,file)
-		return 'ok \n '
-	elif extension in {'png','jpg','jpeg','gif'}:
-		with open(os.path.join(exampleFolder, picture),'rb') as img_file:
-			imageB64 = base64.b64encode(img_file.read())
-		imageJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':imageB64.decode("utf-8")})
-		with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
-				json.dump(imageJson,file)
-		return "ok \n "
-	elif extension == "csv":
-		liste = ""
-		with open(os.path.join(exampleFolder, picture),"r") as csvfile:
-			csvReader = csv.reader(csvfile, delimiter=';',quotechar='|')
-			for row in csvReader:
-				liste += ", "+ str(row)
-		CSVJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':liste})
-		with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
-				json.dump(CSVJson,file)
-		return "ok \n"
-	elif extension == "txt":
-		with open(os.path.join(exampleFolder, picture),"r") as txtfile:
-			texte = txtfile.read()
-			txtJson = json.dumps({'Nom':name, 'extension':extension, 'Donnees':texte})
-		with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
-				json.dump(txtJson,file)
-		return "ok \n "
-	else :
-		return "Ce format d'image n'est pas autorisé. Veuillez utiliser les formats suivants: png, jpg, jpeg, gif \n "

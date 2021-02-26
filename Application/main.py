@@ -1,5 +1,5 @@
 import os
-from app import app, url, exampleFolder
+from app import app, url, exampleFolder, bucket
 import urllib.request
 from flask import Flask, flash, request, redirect, url_for, render_template, send_from_directory, send_file
 from werkzeug.utils import secure_filename
@@ -19,6 +19,10 @@ import boto3
 import logging 
 from botocore.exceptions import ClientError
 
+# Vérification du mimetype
+import mimetypes
+
+
 # Fonction de sécurisation des images et gestion des extensions autorisées
 ALLOWED_EXTENSIONS = set(['txt','pdf','csv','png', 'jpg', 'jpeg', 'gif'])
 def allowed_file(filename):
@@ -31,7 +35,7 @@ def listFile():
 	listeFichiers= ''
 	session = boto3.Session(profile_name='csloginstudent')
 	s3 = session.client("s3")
-	liste = s3.list_objects(Bucket = "paulb-fil-rouge-bucket-sio")
+	liste = s3.list_objects(Bucket = bucket)
 	try:
 		for a in liste.get('Contents'):
 			listeFichiers += a.get('Key') + '\n'
@@ -39,15 +43,10 @@ def listFile():
 		return 'Une erreur est survenue \n'
 	return(listeFichiers)
 
-
-
-import mimetypes
 @app.route('/mimetype', methods=['POST'])
 def mimetypeFile():
 	file = request.files["file"]
 	return mimetypes.guess_type(file.filename) 
-
-
 
 # Route de sélection d'une image (ligne de commande)
 @app.route('/load',methods=['POST'])
@@ -65,9 +64,11 @@ def loadFile():
 		#Vérifier si le fichier est déjà chargé dans S3
 		if name+".json" in liste:
 			return "Un fichier contient le même nom \n"
+		if mimetypes.guess_type(file.filename)[0].split("/")[-1] != extension and not (mimetypes.guess_type(file.filename)[0].split("/")[-1] == 'plain' and extension =='txt') and not (mimetypes.guess_type(file.filename)[0].split("/")[-1] == 'vnd.ms-excel' and extension =='csv'):
+			return "L'extension de ce fichier ne correspond pas à son contenu. Veuillez essayer un autre fichier. \n "
 	except:
 		return "Ce fichier ne semble pas être supporté par l'application \n"
-		
+
 	#Fichiers PDF
 	if extension == 'pdf':
 		try:
@@ -79,9 +80,9 @@ def loadFile():
 			fichierJson = json.dumps({'Nom':name,'Metadonnees':document.getDocumentInfo(),'Donnees':pdftext})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(fichierJson,file)
-				#sendFile(name+'.json')
 		except: 
 			return 'Une erreur est survenue \n'
+		sendFile(name+'.json')
 		return 'Fichier correctement envoyé \n '
 
 	#Images
@@ -92,9 +93,9 @@ def loadFile():
 			imageJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':imageB64.decode("utf-8")})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(imageJson,file)
-				sendFile(name+'.json')
 		except: 
 			return 'Une erreur est survenue \n'
+		sendFile(name+'.json')
 		return "Fichier correctement envoyé \n "
 
 	# Fichiers CSV
@@ -108,9 +109,9 @@ def loadFile():
 			CSVJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':liste})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(CSVJson,file)
-				sendFile(name+'.json')
 		except: 
 			return 'Une erreur est survenue \n'
+		sendFile(name+'.json')
 		return "Fichier correctement envoyé \n"
 
 	# Fichiers txt
@@ -121,18 +122,17 @@ def loadFile():
 				txtJson = json.dumps({'Nom':name, 'extension':extension, 'Donnees':texte})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(txtJson,file)
-				sendFile(name+'.json')
 		except:
 			return 'Une erreur est survenue \n'
+		sendFile(name+'.json')
 		return "Fichier correctement envoyé \n "
 	
 	# Extension non reconnue
 	else :
 		return "Ce format d'image n'est pas autorisé. Veuillez utiliser les formats suivants: png, jpg, jpeg, gif \n "
 
-
+@app.route('/testSend/<nomFichier>', methods=['GET'])
 def sendFile(nomFichier):
-	bucket = "paulb-fil-rouge-bucket-sio"
 	object_name = nomFichier
 	file_name = app.config['UPLOAD_FOLDER'] + nomFichier
 	session = boto3.Session(profile_name='csloginstudent')
@@ -149,14 +149,8 @@ def sendFile(nomFichier):
 	return "Fichier correctement envoyé et supprimé de l'appli"
 
 
-
-
-
-
-
 @app.route('/download/<picture>', methods=['GET'])
 def downloadFile(picture):
-	bucket = "paulb-fil-rouge-bucket-sio"
 	object_name = picture
 	file_name = app.config['UPLOAD_FOLDER'] + picture
 	liste = listFile()
@@ -167,21 +161,17 @@ def downloadFile(picture):
 	try:
 		s3.download_file(bucket, object_name, file_name)
 		uploads = os.path.join(app.config['UPLOAD_FOLDER'], picture)
-		#send_from_directory(directory=uploads, filename = object_name, as_attachment=True)
+		send_file(uploads, as_attachment=True)
+		os.remove(app.config['UPLOAD_FOLDER']+picture)
 	except: 
 		return "Un problème est survenu \n"
-	return {send_file(uploads, as_attachment=True),"Fichier JSON correctement chargé dans le dossier actuel"}
-
-
-
-
+	return "Fichier JSON correctement chargé dans le dossier actuel"
 
 
 
 
 @app.route('/delete/<picture>',methods=['GET'])
 def deleteFile(picture):
-	bucket = "paulb-fil-rouge-bucket-sio"
 	session = boto3.Session(profile_name='csloginstudent')
 	s3 = session.client("s3")
 	try:
@@ -195,3 +185,6 @@ def deleteFile(picture):
 # Lancement de l'application à l'execution du script
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+# Erreur CSV PDF Text
