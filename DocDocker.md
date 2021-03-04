@@ -26,6 +26,7 @@ sudo docker-compose build
 sudo docker-compose up 
 sudo docker-compose up -d
 
+sudo docker-compose up --build
 
-cd /mnt/c/Users/PC/Desktop/SIO/'ProjetFilRouge'/PaulBOISSON_Fil_Rouge/Fichiers_Test
+cd /mnt/c/Users/PC/Desktop/SIO/'ProjetFilRouge'/PaulBOISSON_Fil_Rouge/Fichiers_Test  
 curl -i -X POST -F "file=@FichierPNG.png"  http://34.201.129.140:80/load
