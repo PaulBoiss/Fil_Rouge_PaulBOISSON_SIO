@@ -38,8 +38,6 @@ Installation de boto3 pour l'accès à s3 depuis un script Python
 &rarr; pip install boto3
 
 
-$ pip install -U Celery
-
 # Lancement du serveur
 Se mettre dans le dossiser Application et taper la commande: $ python3 main.py
 
@@ -72,3 +70,38 @@ export AWS_PROFILE=csloginteacher
 aws sts get-caller-identity
 export AWS_PROFILE=csloginstudent
 aws sts get-caller-identity
+
+
+FROM python:3.8.5
+ADD . /Application
+WORKDIR /Application
+RUN pip3 install -r requirements.txt
+CMD python app.py
+
+
+#FROM python:3.8.5
+#ADD . /Application
+#WORKDIR /Application
+#RUN pip3 install -r requirements.txt
+#CMD python main.py
+
+#COPY credentials
+
+
+
+
+-- docker compose
+version: '2'
+services:
+    web:
+        build: .
+        ports:
+            - "5000:5000"
+        volumes:
+            - .:/code
+        depends_on:
+            - redis
+    redis:
+        image: redis
+
+gunicorn app:app

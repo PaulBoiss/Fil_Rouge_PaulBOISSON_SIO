@@ -23,11 +23,15 @@ from botocore.exceptions import ClientError
 import mimetypes
 
 
+
 # Fonction de sécurisation des images et gestion des extensions autorisées
 ALLOWED_EXTENSIONS = set(['txt','pdf','csv','png', 'jpg', 'jpeg', 'gif'])
 def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@app.route('/helloworld')
+def helloworld():
+	return "Hello World \n"
 
 # Liste des fichiers chargés (ligne de commande)
 @app.route('/list', methods=['GET'])
@@ -182,9 +186,8 @@ def deleteFile(picture):
 	return 'Fichier parfaitement supprimé \n'
 
 
-# Lancement de l'application à l'execution du script
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
 
 
 # Erreur CSV PDF Text
