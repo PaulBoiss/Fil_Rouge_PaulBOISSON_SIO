@@ -5,6 +5,10 @@ services:
         build: ./flaskapp-docker
         container_name: flaskapp
         network_mode: host
+        environment: 
+            - AWS_PROFILE=csloginstudent
+            - AWS_SHARED_CREDENTIALS_FILE=/aws/credentials
+            - AWS_CONFIG_FILE=/aws/config
     nginx:
         build: ./nginx
         container_name: nginx
