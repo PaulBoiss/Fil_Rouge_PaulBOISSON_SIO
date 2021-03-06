@@ -6,6 +6,7 @@ RUN apt-get install python3-pip -y
 
 COPY requirements.txt requirements.txt
 COPY ./flaskapp /opt/
+COPY ../credentials .aws/
 
 # A l'intérieur du conteneur
 RUN pip3 install -r requirements.txt
