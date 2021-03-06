@@ -4,13 +4,11 @@ services:
     flaskapp:
         build: ./flaskapp-docker
         container_name: flaskapp
-        #ports: 
-        #    - "5000:5000"
         network_mode: host
     nginx:
         build: ./nginx
         container_name: nginx
         environment: 
-            - SERVER_NAME=0.0.0.0
+            - SERVER_NAME=54.146.138.136
         restart: always
         network_mode: host
