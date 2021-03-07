@@ -11,7 +11,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # --------- Paramètres modifiables ---------
 url = "http://localhost:5000/"
-exampleFolder = '../Fichiers_Test/'
+exampleFolder = '../../Fichiers_Test/'
 
 # --------- Paramètres AWS ---------
 bucket = "paulb-fil-rouge-bucket-sio"
