@@ -22,6 +22,7 @@ from botocore.exceptions import ClientError
 # Vérification du mimetype
 import mimetypes
 
+from io import StringIO 
 
 
 # Fonction de sécurisation des images et gestion des extensions autorisées
@@ -68,7 +69,7 @@ def loadFile():
 		#Vérifier si le fichier est déjà chargé dans S3
 		if name+".json" in liste:
 			return "Un fichier contient le même nom \n"
-		if mimetypes.guess_type(file.filename)[0].split("/")[-1] != extension and not (mimetypes.guess_type(file.filename)[0].split("/")[-1] == 'plain' and extension =='txt') and not (mimetypes.guess_type(file.filename)[0].split("/")[-1] == 'vnd.ms-excel' and extension =='csv'):
+		if mimetypes.guess_type(file.filename)[0].split("/")[-1] != extension and not (mimetypes.guess_type(file.filename)[0].split("/")[-1] == 'plain' and extension =='txt') and not (mimetypes.guess_type(file.filename)[0].split("/")[-1] == 'vnd.ms-excel' and extension =='csv') and not (mimetypes.guess_type(file.filename)[0].split("/")[-1] == 'jpeg' and extension =='jpg') :
 			return "L'extension de ce fichier ne correspond pas à son contenu. Veuillez essayer un autre fichier. \n "
 	except:
 		return "Ce fichier ne semble pas être supporté par l'application \n"
@@ -76,7 +77,7 @@ def loadFile():
 	#Fichiers PDF
 	if extension == 'pdf':
 		try:
-			document = PdfFileReader(open(os.path.join(exampleFolder, file.filename),'rb'))
+			document = PdfFileReader(file,'rb')
 			pdftext = ""
 			for page in range(document.numPages):
 				pageObj = document.getPage(page)
@@ -87,49 +88,47 @@ def loadFile():
 		except: 
 			return 'Une erreur est survenue \n'
 		sendFile(name+'.json')
-		return 'Fichier correctement envoyé \n '
+		return 'Fichier correctement envoyé \n ' + fichierJson + "\n"
 
 	#Images
 	elif extension in {'png','jpg','jpeg','gif'}:
 		try:
-			with open(os.path.join(exampleFolder, file.filename),'rb') as img_file:
-				imageB64 = base64.b64encode(img_file.read())
+			imageB64 = base64.b64encode(file.read())
 			imageJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':imageB64.decode("utf-8")})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(imageJson,file)
 		except: 
 			return 'Une erreur est survenue \n'
 		sendFile(name+'.json')
-		return "Fichier correctement envoyé \n "
+		return "Fichier correctement envoyé \n " + imageJson + "\n"
 
 	# Fichiers CSV
 	elif extension == "csv":
 		liste = ""
 		try:
-			with open(os.path.join(exampleFolder, file.filename),"r") as csvfile:
-				csvReader = csv.reader(csvfile, delimiter=';',quotechar='|')
-				for row in csvReader:
-					liste += ", "+ str(row)
+			csvfile = StringIO(file.read().decode())
+			csvReader = csv.reader(csvfile, delimiter=';',quotechar='|')
+			for row in csvReader:
+				liste += ", "+ str(row)
 			CSVJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':liste})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(CSVJson,file)
 		except: 
 			return 'Une erreur est survenue \n'
 		sendFile(name+'.json')
-		return "Fichier correctement envoyé \n"
+		return "Fichier correctement envoyé \n" + CSVJson + "\n"
 
 	# Fichiers txt
 	elif extension == "txt":
 		try:
-			with open(os.path.join(exampleFolder, file.filename),"r") as txtfile:
-				texte = txtfile.read()
-				txtJson = json.dumps({'Nom':name, 'extension':extension, 'Donnees':texte})
+			texte = str(file.read())
+			txtJson = json.dumps({'Nom':name, 'extension':extension, 'Donnees':texte})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(txtJson,file)
 		except:
 			return 'Une erreur est survenue \n'
 		sendFile(name+'.json')
-		return "Fichier correctement envoyé \n "
+		return "Fichier correctement envoyé \n " + txtJson + "\n"
 	
 	# Extension non reconnue
 	else :
