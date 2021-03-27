@@ -3,16 +3,16 @@ from app import app, url, exampleFolder, bucket
 import urllib.request
 from flask import Flask, flash, request, redirect, url_for, render_template, send_from_directory, send_file
 from werkzeug.utils import secure_filename
-import PIL.Image
-#import PIL.ImageTk
-#from tkinter import Tk, Label
 import requests
 import json
 
-# Nouveaux par rapport au projet python
+# Traitement fichiers
 from PyPDF2 import PdfFileReader
 import base64
 import csv
+from io import StringIO
+import PIL.Image
+from rekognition import detect_labels_rekognition
 
 # Connection avec AWS
 import boto3
@@ -22,19 +22,22 @@ from botocore.exceptions import ClientError
 # Vérification du mimetype
 import mimetypes
 
-from io import StringIO 
-
+# Intégration de Swagger 
+import flaskSwagger
+from sendBoto3 import sendFile
 
 # Fonction de sécurisation des images et gestion des extensions autorisées
 ALLOWED_EXTENSIONS = set(['txt','pdf','csv','png', 'jpg', 'jpeg', 'gif'])
 def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+# Fonction Test
 @app.route('/helloworld')
 def helloworld():
 	return "Hello World \n"
 
-# Liste des fichiers chargés (ligne de commande)
+# Liste des fichiers chargés
 @app.route('/list', methods=['GET'])
 def listFile():
 	listeFichiers= ''
@@ -48,12 +51,15 @@ def listFile():
 		return 'Une erreur est survenue \n'
 	return(listeFichiers)
 
+# Vérification du mimetype d'un fichier
 @app.route('/mimetype', methods=['POST'])
 def mimetypeFile():
 	file = request.files["file"]
 	return mimetypes.guess_type(file.filename) 
 
-# Route de sélection d'une image (ligne de commande)
+
+
+# Route de sélection d'une image
 @app.route('/load',methods=['POST'])
 def loadFile():
 	try:
@@ -94,7 +100,15 @@ def loadFile():
 	elif extension in {'png','jpg','jpeg','gif'}:
 		try:
 			imageB64 = base64.b64encode(file.read())
-			imageJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':imageB64.decode("utf-8")})
+			if extension in {'png','jpg','jpeg'}:
+				filename = secure_filename(file.filename)
+				img=PIL.Image.open(file)
+				img.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+				meta = detect_labels_rekognition(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+				imageJson = json.dumps({'Nom':name, 'extension':extension,'Metadonnees': meta, 'Donnees':imageB64.decode("utf-8")})
+				os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+			else: 
+				imageJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':imageB64.decode("utf-8")})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(imageJson,file)
 		except: 
@@ -134,24 +148,7 @@ def loadFile():
 	else :
 		return "Ce format d'image n'est pas autorisé. Veuillez utiliser les formats suivants: png, jpg, jpeg, gif \n "
 
-@app.route('/testSend/<nomFichier>', methods=['GET'])
-def sendFile(nomFichier):
-	object_name = nomFichier
-	file_name = app.config['UPLOAD_FOLDER'] + nomFichier
-	session = boto3.Session(profile_name='csloginstudent')
-	s3 = session.client("s3")
-	try:
-		response = s3.upload_file(file_name, bucket, object_name)
-	except ClientError as e:
-		logging.error(e)
-		return 'False'
-	try:
-		os.remove(app.config['UPLOAD_FOLDER']+nomFichier)
-	except:
-		return "Le fichier n'a pas pu être supprimé"
-	return "Fichier correctement envoyé et supprimé de l'appli"
-
-
+# Téléchargement d'un fichier du bucketS3
 @app.route('/download/<picture>', methods=['GET'])
 def downloadFile(picture):
 	object_name = picture
@@ -164,15 +161,15 @@ def downloadFile(picture):
 	try:
 		s3.download_file(bucket, object_name, file_name)
 		uploads = os.path.join(app.config['UPLOAD_FOLDER'], picture)
-		send_file(uploads, as_attachment=True)
+		fileDl = send_file(uploads, as_attachment=True)
 		os.remove(app.config['UPLOAD_FOLDER']+picture)
 	except: 
 		return "Un problème est survenu \n"
-	return "Fichier JSON correctement chargé dans le dossier actuel"
+	return fileDl
 
 
 
-
+# Suppression d'un fichier dans le stockage
 @app.route('/delete/<picture>',methods=['GET'])
 def deleteFile(picture):
 	session = boto3.Session(profile_name='csloginstudent')
@@ -188,5 +185,3 @@ def deleteFile(picture):
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0')
 
-
-# Erreur CSV PDF Text

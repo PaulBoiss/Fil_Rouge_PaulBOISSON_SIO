@@ -1,0 +1,146 @@
+{
+    "swagger": "2.0",
+    "info": {
+      "description": "Bienvenue sur mon API de gestion de fichier réalisé dans le cadre du projet Fil Rouge proposé aux étudiants du MS SIO de CentraleSupélec. ",
+      "version": "1.0.0",
+      "title": "Paul BOISSON - Fil Rouge",
+      "contact": {
+          "email": "paul.boisson@student-cs.fr"
+      },
+      "license": {
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT"
+      }
+    },
+    "servers": [
+        {
+          "url": "/"
+        }
+      ],
+      "tags": [
+        {
+            "name": "Gestionnaire de fichier",
+            "description": "Ce document présente les principales requêtes du gestionnaire de fichier. "
+        }
+      ],
+      
+      "paths": {
+
+        "/list": {
+            "get": {
+                "tags": [
+                    "Gestionnaire de fichier"
+                ],
+                "summary": "Afficher la liste des fichiers déjà chargés",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+
+        "/delete/{filename}": {
+            "parameters": [
+              {
+                "name": "filename",
+                "in": "path",
+                "required": true,
+                "description": "Name of the file you want to delete",
+                "type": "string"
+              }
+            ],
+            "get": {
+              "tags": [
+                "Gestionnaire de fichier"
+              ],
+              "summary": "Supprimer un des fichiers déjà chargé en utilisant son nom",
+              "responses": {
+                "200": {
+                  "description": "OK"
+                },
+                "400": {
+                  "description": "Failed. Misunderstood Request."
+                },
+                "404": {
+                  "description": "Failed. Book request not found."
+                }
+              }
+            }
+        },
+
+      "/download/{filename}": {
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "Name of the file you want to download",
+            "type": "string"
+          }
+        ],
+        "get": {
+          "tags": [
+            "Gestionnaire de fichier"
+          ],
+          "summary": "Télécharger un des fichiers déjà chargé en utilisant son nom",
+          "responses": {
+            "200": {
+              "description": "OK"
+            },
+            "400": {
+              "description": "Failed. Misunderstood Request."
+            },
+            "404": {
+              "description": "Failed. Book request not found."
+            }
+          }
+        }
+      },
+
+      "/load": {
+        "consumes":"multipart/form-data",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "formData",
+            "required": true,
+            "description": "File you want to upload",
+            "type": "file"
+          }
+        ],
+        "post": {
+          "tags": [
+            "Gestionnaire de fichier"
+          ],
+          "summary": "Envoyer un fichier vers l'API",
+          "responses": {
+            "200": {
+              "description": "OK"
+            },
+            "400": {
+              "description": "Failed. Misunderstood Request."
+            },
+            "404": {
+              "description": "Failed. Book request not found."
+            }
+          }
+        }
+      },
+
+      "/helloworld": {
+        "get": {
+            "tags": [
+                "Gestionnaire de fichier"
+            ],
+            "summary": "Fonction Hello World pour vérifier que l'application réponde.",
+            "responses": {
+                "200": {
+                    "description": "OK"
+                }
+            }
+        }
+      }
+
+    }
+  }
