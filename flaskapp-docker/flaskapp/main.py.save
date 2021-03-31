@@ -88,7 +88,7 @@ def loadFile():
 			for page in range(document.numPages):
 				pageObj = document.getPage(page)
 				pdftext += pageObj.extractText().replace('\n','')
-			fichierJson = json.dumps({'Metadonnees':{'Nom':name,'mimetype':mimetypeFile(),'Infos':document.getDocumentInfo()},'Donnees':pdftext})
+			fichierJson = json.dumps({'Nom':name,'Metadonnees':document.getDocumentInfo(),'Donnees':pdftext})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(fichierJson,file)
 		except: 
@@ -105,10 +105,10 @@ def loadFile():
 				img=PIL.Image.open(file)
 				img.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 				meta = detect_labels_rekognition(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-				imageJson = json.dumps({'Metadonnees':{'Nom':name, 'extension':extension,'mimetype':mimetypeFile(),'exif':img._getexif(),'rekognition': meta}, 'Donnees':imageB64.decode("utf-8")})
+				imageJson = json.dumps({'Metadonnees':{'Nom':name, 'extension':extension,'exif':img._getexif(),'Rekognition': meta},'Donnees':imageB64.decode("utf-8")})
 				os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 			else: 
-				imageJson = json.dumps({'Metadonnees':{'Nom':name, 'extension':extension,'mimetype':mimetypeFile() },'Donnees':imageB64.decode("utf-8")})
+				imageJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':imageB64.decode("utf-8")})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(imageJson,file)
 		except: 
@@ -122,12 +122,9 @@ def loadFile():
 		try:
 			csvfile = StringIO(file.read().decode())
 			csvReader = csv.reader(csvfile, delimiter=';',quotechar='|')
-			rowNumber = 0
 			for row in csvReader:
 				liste += ", "+ str(row)
-				rowNumber += 1
-				columnNumber = len(row)
-			CSVJson = json.dumps({'Metadonnees':{'Nom':name, 'extension':extension,'mimetype':mimetypeFile(),'Nombre de lignes':rowNumber,'Nombre de colonnes':columnNumber},'Donnees':liste})
+			CSVJson = json.dumps({'Nom':name, 'extension':extension,'Donnees':liste})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(CSVJson,file)
 		except: 
@@ -139,7 +136,7 @@ def loadFile():
 	elif extension == "txt":
 		try:
 			texte = str(file.read())
-			txtJson = json.dumps({'Metadonnes':{'Nom':name, 'extension':extension,'mimetype':mimetypeFile(), 'Nombre de caractères':len(texte)}, 'Donnees':texte})
+			txtJson = json.dumps({'Nom':name, 'extension':extension, 'Donnees':texte})
 			with open(os.path.join(app.config['UPLOAD_FOLDER'],name +'.json'),"w") as file: 
 				json.dump(txtJson,file)
 		except:
