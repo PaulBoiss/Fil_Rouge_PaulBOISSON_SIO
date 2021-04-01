@@ -9,6 +9,7 @@ COPY ./flaskapp /opt/
 COPY .aws/ /aws/
 
 # A l'intérieur du conteneur
+EXPOSE 5000:5000
 RUN pip3 install -r requirements.txt
 WORKDIR /opt/
 
