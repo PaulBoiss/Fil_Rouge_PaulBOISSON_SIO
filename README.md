@@ -15,7 +15,7 @@ Il est recommandé d’utiliser l’interface Swagger réalisée pour détailler
 
 Afin de pouvoir utiliser l’application, un nom d’utilisateur et un mot de passe sont demandés. Un compte a été créé, il vous suffit donc de renseigner les informations suivantes :
 -	Utilisateur : user
--	Mot de passe : user
+-	Mot de passe : user  
 Vous serez ensuite renvoyé vers l’interface Swagger. 
 
 Depuis cette interface, vous pouvez lancer les 5 fonctionnalités de l’application :
