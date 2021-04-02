@@ -94,7 +94,7 @@ def loadFile():
 		except: 
 			return 'Une erreur est survenue \n'
 		sendFile(name+'.json')
-		return 'Fichier correctement envoyé \n ' + fichierJson + "\n"
+		return fichierJson
 
 	#Images
 	elif extension in {'png','jpg','jpeg','gif'}:
@@ -114,7 +114,7 @@ def loadFile():
 		except: 
 			return 'Une erreur est survenue \n'
 		sendFile(name+'.json')
-		return "Fichier correctement envoyé \n " + imageJson + "\n"
+		return imageJson
 
 	# Fichiers CSV
 	elif extension == "csv":

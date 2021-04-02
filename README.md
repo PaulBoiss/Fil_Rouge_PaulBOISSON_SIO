@@ -1,107 +1,44 @@
 # Introduction
-Bienvenue sur mon API de gestion de fichiers, réalisé dans le cadre du Projet Fil Rouge du mastère spécialisé Ingénierie des Systèmes Informatiques Ouverts. L'objectif de ce mini projet est de réaliser une API de type REST en Python, accessible sur un serveur
-distant hébergé dans le cloud. Le propos applicatif de cette API est d'accepter le dépôt de tout type de fichier et de le restituer au format JSON.
+Bienvenue sur mon API de gestion de fichiers, réalisé dans le cadre du Projet Fil Rouge du mastère spécialisé Ingénierie des Systèmes Informatiques Ouverts. L'objectif de ce mini projet est de réaliser une API de type REST en Python, accessible sur un serveur distant hébergé dans le cloud. Le propos applicatif de cette API est d'accepter le dépôt de tout type de fichier et de le restituer au format JSON.
 
-# Technologies utilisées
+# Service Amazon
 - **Hébergement du service :** Amazon Web Service EC2
 - **Stockage des fichiers :** Amazon Web Service S3
-- **Envoi des fichiers de Python vers S3 :** Boto3
 
-# Pré-requis python
-Cette API utilise différentes librairies précisées dans le fichier "Requirements". Pour installer ces librairies, on utilise PIP, l'installateur de paquets Python, qui est fourni par défaut avec les version de Python 3 supérieures à la version 3.4. 
-    
-## Librairies / Framerworks
-boto3-1.16.59  
-botocore-1.19.59   
-jmespath-0.10.0  
-python-dateutil-2.8.1   
-s3transfer-0.3.4  
+# QuickStart
+Mon application est hébergée sur le domaine suivant :
+https://filrouge.pbo.p2021.ajoga.fr
+Elle permet à l’utilisateur de charger un fichier qui lui sera renvoyé sous forme d’un fichier JSON contenant ses métadonnées et ses données séparément. Ce fichier sera stocké dans un bucket du service AWS S3 et pourra être récupéré ultérieurement. 
 
+## Utilisation de l'interface Swagger
+Il est recommandé d’utiliser l’interface Swagger réalisée pour détailler les fonctionnalités de l’API depuis une interface graphique, à partir d’un navigateur web (Chrome, Firefox ou autre) à l’adresse suivante : https://filrouge.pbo.p2021.ajoga.fr/swagger. 
 
-## Commandes 
-Installation de Flask pour la création de serveur web:
-&rarr; python3 -m pip install flask
+Afin de pouvoir utiliser l’application, un nom d’utilisateur et un mot de passe sont demandés. Un compte a été créé, il vous suffit donc de renseigner les informations suivantes :
+-	Utilisateur : user
+-	Mot de passe : user
+Vous serez ensuite renvoyé vers l’interface Swagger. 
 
-Installation de Pillow pour la gestion des images:
-&rarr; python3 -m pip install --upgrade Pillow
+Depuis cette interface, vous pouvez lancer les 5 fonctionnalités de l’application :
+-	Lister les fichiers qui ont déjà été chargés dans l’application
+-	Supprimer un des fichiers
+-	Télécharger un des fichiers
+-	Envoyer un fichier vers l’application
+-	Recevoir un « Hello World » de l’application
+(Si l’interface ne s’affiche pas, n’hésitez pas à actualiser la page, le nombre de requêtes par utilisateur étant limité à la minute, il se peut que nginx bloque votre requête) 
 
-Installation de Pytest pour lancer le script de tests:
-&rarr; python3 -m pip install -U pytest
+L’application supporte les fichiers au formats png, jpg, jpeg, gif, txt, PDF, csv. 
 
-Installation de Requests pour effectuer des requêtes à l'API directement avec Python:
-&rarr; python3 -m pip install requests
+## Utilisation de l’interface avec curl
+Il est également possible d’utiliser l’application en utilisant la commande curl via une invite de commande (terminal Ubuntu par exemple). 
 
-Instalation de PyPDF2 pour la lecture de fichiers PDF
-&rarr; pip install PyPDF2
+**Afficher la liste des fichiers déjà chargés :**
+$ curl -u user:user https://filrouge.pbo.p2021.ajoga.fr/list
 
-Installation de boto3 pour l'accès à s3 depuis un script Python
-&rarr; pip install boto3
+**Envoyer un fichier :**  
+$ curl -i -u user:user -X POST -F "file=@nomfichier.extension"  https://filrouge.pbo.p2021.ajoga.fr/load
 
+**Télécharger un fichier déjà envoyé :**  
+$ curl -u user:user -O http://127.0.0.1:5000/download/Filename
 
-# Lancement du serveur
-Se mettre dans le dossiser Application et taper la commande: $ python3 main.py
-
-
-# Obtenir la liste des fichiers contenus dans le bucket:
-curl http://127.0.0.1:5000/list
-
-# Uploader un fichier
-Uploader un fichier avec curl. Se mettre dans son dossier 
-curl -i -X POST -F "file=@FichierPNG.png"  http://127.0.0.1:5000/load
-
-
-# Supprimer un fichier 
-curl http://127.0.0.1:5000/delete/Filename
-
-curl -i -X POST -F "file=@FichierPNG.png"  http://127.0.0.1:5000/mimetype
-
-Depuis la console wsl, pour accéder aux fichiers de l'ordi: cd /mnt/c/Users/PC/Desktop/SIO/'ProjetFilRouge'/PaulBOISSON_Fil_Rouge
-
-
-# Télécharger un fichier JSON existant:
-
-curl -O http://127.0.0.1:5000/download/FichierPNG.json
-Attention, avec cette commande, même si le fichier n'existe pas dans le bucket S3 un fichier portant son nom sera téléchargé. 
-
-
-
-Pouvoir accéder au s3:
-export AWS_PROFILE=csloginteacher
-aws sts get-caller-identity
-export AWS_PROFILE=csloginstudent
-aws sts get-caller-identity
-
-
-FROM python:3.8.5
-ADD . /Application
-WORKDIR /Application
-RUN pip3 install -r requirements.txt
-CMD python app.py
-
-
-#FROM python:3.8.5
-#ADD . /Application
-#WORKDIR /Application
-#RUN pip3 install -r requirements.txt
-#CMD python main.py
-
-#COPY credentials
-
-
-
-
--- docker compose
-version: '2'
-services:
-    web:
-        build: .
-        ports:
-            - "5000:5000"
-        volumes:
-            - .:/code
-        depends_on:
-            - redis
-    redis:
-        image: redis
-
-gunicorn app:app
+**Supprimer un fichier :**   
+$ curl -u user :user http://127.0.0.1:5000/delete/Filename
